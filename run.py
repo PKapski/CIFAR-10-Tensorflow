@@ -3,6 +3,7 @@ import pickle
 import os
 import matplotlib.pyplot as plt
 import keras
+from keras.callbacks import CSVLogger
 from keras.models import Sequential
 from keras.models import load_model
 from keras.layers import Dense, Dropout, Activation, Flatten
@@ -13,6 +14,7 @@ import tensorflow as tf
 
 cifar_10_dir = 'cifar-10-batches-py/'
 save_dir = os.path.join(os.getcwd(), 'saved_models')
+log_dir=os.path.join(save_dir,'logs')
 numberOfClaases = 10
 
 def getPath(filename=""):
@@ -83,7 +85,9 @@ def createAndTrainModel(_batchSize,_numberOfEpochs,_dataAugmentation,_modelName,
     batchSize = _batchSize
     numberOfEpochs=_numberOfEpochs
     dataAugmentation = _dataAugmentation
-    modelName = _modelName
+    modelPath = _modelName+'.h5'
+    logPath = os.path.join(log_dir,_modelName)
+    logPath = logPath+".log"
 
     model=createModel(train_data)
     # initiate RMSprop optimizer
@@ -91,22 +95,24 @@ def createAndTrainModel(_batchSize,_numberOfEpochs,_dataAugmentation,_modelName,
     model.compile(loss='categorical_crossentropy',
                   optimizer=opt,
                   metrics=['accuracy'])
+    csv_logger = CSVLogger(logPath,separator=',',append=True)
     if not dataAugmentation:
         model.fit(train_data, train_labels,
               batch_size=batchSize,
               epochs=numberOfEpochs,
               validation_data=(test_data, test_labels),
-              shuffle=True)
+              shuffle=True,
+              callbacks=[csv_logger])
         #TODO Creating checkpoints to save model every X epoachs.
     else:
         print("Using data augmentation")
         #TODO
 
-    saveModel(save_dir, modelName, model)
+    saveModel(save_dir, modelPath, model)
 
 def loadAndEvaluateModel(test_data, test_labels,modelName):
     #Loading model --------------
-    model = load_model(os.path.join(save_dir,modelName))
+    model = load_model(os.path.join(save_dir,modelName)+".h5")
     loss, acc = model.evaluate(test_data, test_labels)
     model.summary()
     print("Restored model, accuracy: {:5.2f}%".format(100 * acc))
@@ -154,13 +160,13 @@ def load_cifar():
     #presentData(train_data,labelNames,train_labels2)
     print(test_labels.shape)
 
-    trainModel=False
-    loadModel=True
+    trainModel=True
+    loadModel=False
     #MODEL------------------------------------
-    batchSize = 32
-    numberOfEpochs=5
+    batchSize = 16
+    numberOfEpochs=15
     dataAugmentation = False
-    modelName = 'keras_cifar10_trained_model-5e.h5'
+    modelName = 'keras_cifar10_trained_model-15e-noda-16'
 
     if trainModel:
         createAndTrainModel(batchSize,numberOfEpochs,dataAugmentation,modelName,train_data,train_labels,test_data,test_labels)
