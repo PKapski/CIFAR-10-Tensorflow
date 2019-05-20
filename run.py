@@ -8,9 +8,7 @@ from keras.models import Sequential
 from keras.models import load_model
 from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.layers import Conv2D, MaxPooling2D
-from keras.utils import np_utils
-
-import tensorflow as tf
+from keras_preprocessing.image import ImageDataGenerator
 
 cifar_10_dir = 'cifar-10-batches-py/'
 save_dir = os.path.join(os.getcwd(), 'saved_models')
@@ -106,6 +104,24 @@ def createAndTrainModel(_batchSize,_numberOfEpochs,_dataAugmentation,_modelName,
         #TODO Creating checkpoints to save model every X epoachs.
     else:
         print("Using data augmentation")
+        # data augmentation
+        datagen = ImageDataGenerator(
+            featurewise_center=False,  # set input mean to 0 over the dataset
+            samplewise_center=False,  # set each sample mean to 0
+            featurewise_std_normalization=False,  # divide inputs by std of the dataset
+            samplewise_std_normalization=False,  # divide each input by its std
+            zca_whitening=False,  # apply ZCA whitening
+            rotation_range=0,  # randomly rotate images in the range (degrees, 0 to 180)
+            width_shift_range=0.1,  # randomly shift images horizontally (fraction of total width)
+            height_shift_range=0.1,  # randomly shift images vertically (fraction of total height)
+            horizontal_flip=True,  # randomly flip images
+            vertical_flip=False)  # randomly flip images
+        datagen.fit(train_data)
+        model.fit_generator(datagen.flow(train_data,train_labels,batch_size=batchSize),
+                            epochs=numberOfEpochs,
+                            steps_per_epoch=len(train_data)/batchSize,
+                            validation_data=(test_data,test_labels),
+                            callbacks=[csv_logger])
         #TODO
 
     saveModel(save_dir, modelPath, model)
@@ -160,13 +176,13 @@ def load_cifar():
     #presentData(train_data,labelNames,train_labels2)
     print(test_labels.shape)
 
-    trainModel=True
-    loadModel=False
+    trainModel=False
+    loadModel=True
     #MODEL------------------------------------
-    batchSize = 16
-    numberOfEpochs=15
-    dataAugmentation = False
-    modelName = 'keras_cifar10_trained_model-15e-noda-16'
+    batchSize = 64
+    numberOfEpochs=1
+    dataAugmentation = True
+    modelName = 'keras_cifar10_trained_model-40e-noda'
 
     if trainModel:
         createAndTrainModel(batchSize,numberOfEpochs,dataAugmentation,modelName,train_data,train_labels,test_data,test_labels)
