@@ -16,6 +16,7 @@ log_dir=os.path.join(save_dir,'logs')
 numberOfClaases = 10
 
 def getPath(filename=""):
+
     return os.path.join(cifar_10_dir, filename)
 
 
@@ -25,7 +26,7 @@ def unpickle(filename):
 
     return data
 
-def serialize(data):
+def normalize(data):
     data=data.astype('float32')
     data/=255.0
     return data
@@ -34,7 +35,7 @@ def one_hot_encode(labels):
     encoded_table = np.zeros((len(labels), numberOfClaases))
     for i, label_value in enumerate(labels):
          encoded_table[i][label_value] = 1
-    return encoded_table;
+    return encoded_table
 
 def presentData(data,labelNames,labelData):
     plt.figure(figsize=(10, 10))
@@ -47,6 +48,7 @@ def presentData(data,labelNames,labelData):
         plt.xlabel(labelNames[labelData[i]].decode("utf-8"))
     plt.savefig('test.png')
     plt.show()
+
 def saveModel(save_dir,model_name,model):
     # Save model and weights
     if not os.path.isdir(save_dir):
@@ -54,6 +56,7 @@ def saveModel(save_dir,model_name,model):
     model_path = os.path.join(save_dir, model_name)
     model.save(model_path)
     print('Saved trained model at %s ' % model_path)
+
 def createModel(train_data):
     model = Sequential()
     model.add(Conv2D(32, (3, 3), padding='same',
@@ -78,7 +81,7 @@ def createModel(train_data):
     model.add(Dense(numberOfClaases))
     model.add(Activation('softmax'))
     return model
-def createAndTrainModel(_batchSize,_numberOfEpochs,_dataAugmentation,_modelName,train_data,train_labels,test_data,test_labels):
+def createAndTrainModel(_batchSize,_numberOfEpochs,_dataAugmentation,_modelName,train_data,train_labels,test_data,test_labels,learning_rate):
     #Model properties
     batchSize = _batchSize
     numberOfEpochs=_numberOfEpochs
@@ -89,7 +92,7 @@ def createAndTrainModel(_batchSize,_numberOfEpochs,_dataAugmentation,_modelName,
 
     model=createModel(train_data)
     # initiate RMSprop optimizer
-    opt = keras.optimizers.rmsprop(lr=0.0001, decay=1e-6)
+    opt = keras.optimizers.rmsprop(learning_rate)#, decay=1e-6)
     model.compile(loss='categorical_crossentropy',
                   optimizer=opt,
                   metrics=['accuracy'])
@@ -119,10 +122,9 @@ def createAndTrainModel(_batchSize,_numberOfEpochs,_dataAugmentation,_modelName,
         datagen.fit(train_data)
         model.fit_generator(datagen.flow(train_data,train_labels,batch_size=batchSize),
                             epochs=numberOfEpochs,
-                            steps_per_epoch=len(train_data)/batchSize,
+                            steps_per_epoch=len(train_data)//batchSize,
                             validation_data=(test_data,test_labels),
                             callbacks=[csv_logger])
-        #TODO
 
     saveModel(save_dir, modelPath, model)
 
@@ -130,6 +132,7 @@ def loadAndEvaluateModel(test_data, test_labels,modelName):
     #Loading model --------------
     model = load_model(os.path.join(save_dir,modelName)+".h5")
     loss, acc = model.evaluate(test_data, test_labels)
+
     model.summary()
     print("Restored model, accuracy: {:5.2f}%".format(100 * acc))
     #print(model.layers)
@@ -140,21 +143,22 @@ def load_cifar():
     train_labels=None
     test_data=None
     test_labels=None
+    #Getting label names
     metaDataDict = unpickle(getPath('batches.meta'))
     labelNames = metaDataDict[b'label_names']
     labelNames = np.array(labelNames)
     print(labelNames)
-
-
+    #Getting train data and labels
     for i in range(1,6):
         trainDataDict = unpickle(getPath('data_batch_'+str(i)))
         if train_data is None:
             train_data=trainDataDict[b'data']
             train_labels=trainDataDict[b'labels']
         else:
+            #Linking data and labels from all batches together
             train_data=np.concatenate((train_data, trainDataDict[b'data']), axis=0)
             train_labels=np.concatenate((train_labels, trainDataDict[b'labels']), axis=0)
-
+    #Trasforming data
     train_data=train_data.reshape((len(train_data), 3, 32, 32))
     train_data=train_data.transpose(0, 2, 3, 1)
 
@@ -165,8 +169,8 @@ def load_cifar():
     test_data=test_data.transpose(0, 2, 3, 1)
     print(type(test_labels))
     #print(test_labels)
-    train_data=serialize(train_data)
-    test_data=serialize(test_data)
+    train_data=normalize(train_data)
+    test_data=normalize(test_data)
 
     print(test_labels)
     #test_labels2=np_utils.to_categorical(test_labels,numberOfClaases)#Test if one_hot_encode func works
@@ -176,16 +180,17 @@ def load_cifar():
     #presentData(train_data,labelNames,train_labels2)
     print(test_labels.shape)
 
-    trainModel=False
-    loadModel=True
+    trainModel=True
+    loadModel=False
     #MODEL------------------------------------
-    batchSize = 64
-    numberOfEpochs=1
+    learningRate=0.0001
+    batchSize = 32
+    numberOfEpochs=3
     dataAugmentation = True
-    modelName = 'keras_cifar10_trained_model-40e-noda'
+    modelName = 'keras_cifar10_trained_model-3e-da-rms-0.0001-nodecay'
 
     if trainModel:
-        createAndTrainModel(batchSize,numberOfEpochs,dataAugmentation,modelName,train_data,train_labels,test_data,test_labels)
+        createAndTrainModel(batchSize,numberOfEpochs,dataAugmentation,modelName,train_data,train_labels,test_data,test_labels,learningRate)
     if loadModel:
         loadAndEvaluateModel(test_data,test_labels,modelName)
 
