@@ -92,7 +92,7 @@ def createAndTrainModel(_batchSize,_numberOfEpochs,_dataAugmentation,_modelName,
 
     model=createModel(train_data)
     # initiate RMSprop optimizer
-    opt = keras.optimizers.rmsprop(learning_rate)#, decay=1e-6)
+    opt = keras.optimizers.Adam(learning_rate, decay=1e-6)
     model.compile(loss='categorical_crossentropy',
                   optimizer=opt,
                   metrics=['accuracy'])
@@ -183,11 +183,11 @@ def load_cifar():
     trainModel=True
     loadModel=False
     #MODEL------------------------------------
-    learningRate=0.0001
+    learningRate=0.001
     batchSize = 32
     numberOfEpochs=3
     dataAugmentation = True
-    modelName = 'keras_cifar10_trained_model-3e-da-rms-0.0001-nodecay'
+    modelName = 'keras_cifar10_trained_model-3e-da-adam-0.001'
 
     if trainModel:
         createAndTrainModel(batchSize,numberOfEpochs,dataAugmentation,modelName,train_data,train_labels,test_data,test_labels,learningRate)
